@@ -1,0 +1,47 @@
+{
+  "name": "serverless-api-framework",
+  "version": "1.0.0",
+  "description": "Framework para APIs serverless com AWS Lambda e API Gateway",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:e2e": "jest --testPathPattern=tests/e2e",
+    "test:coverage": "jest --coverage",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "deploy": "npm run deploy:backend",
+    "deploy:backend": "cd backend && serverless deploy",
+    "local": "docker-compose up",
+    "local:down": "docker-compose down",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md}\""
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "api-gateway",
+    "dynamodb",
+    "cognito",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1562.0"
+  }
+}

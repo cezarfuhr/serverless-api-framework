@@ -1,0 +1,52 @@
+.description {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.features {
+  margin: 2rem 0;
+}
+
+.features ul {
+  list-style: none;
+  padding: 0;
+}
+
+.features li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.health-check {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #ddd;
+}
+
+.health-status {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+}
+
+.health-status.healthy {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.health-status.unhealthy {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}

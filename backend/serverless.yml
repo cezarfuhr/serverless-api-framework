@@ -1,0 +1,238 @@
+service: serverless-api-framework
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 256
+  timeout: 30
+
+  environment:
+    STAGE: ${self:provider.stage}
+    DYNAMODB_TABLE: ${self:service}-${self:provider.stage}
+    USER_POOL_ID: !Ref CognitoUserPool
+    USER_POOL_CLIENT_ID: !Ref CognitoUserPoolClient
+    SES_FROM_EMAIL: ${env:SES_FROM_EMAIL, 'noreply@example.com'}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - !GetAtt DynamoDBTable.Arn
+            - !Sub '${DynamoDBTable.Arn}/index/*'
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminUpdateUserAttributes
+          Resource: !GetAtt CognitoUserPool.Arn
+        - Effect: Allow
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource: '*'
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+functions:
+  # Health Check
+  healthCheck:
+    handler: src/handlers/health.handler
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+  # User Management
+  createUser:
+    handler: src/handlers/users/create.handler
+    events:
+      - http:
+          path: /users
+          method: post
+          cors: true
+
+  getUser:
+    handler: src/handlers/users/get.handler
+    events:
+      - http:
+          path: /users/{id}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+
+  updateUser:
+    handler: src/handlers/users/update.handler
+    events:
+      - http:
+          path: /users/{id}
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+
+  deleteUser:
+    handler: src/handlers/users/delete.handler
+    events:
+      - http:
+          path: /users/{id}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+
+  listUsers:
+    handler: src/handlers/users/list.handler
+    events:
+      - http:
+          path: /users
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+
+  # Email Service
+  sendEmail:
+    handler: src/handlers/email/send.handler
+    events:
+      - http:
+          path: /email/send
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId: !Ref ApiGatewayAuthorizer
+
+resources:
+  Resources:
+    # DynamoDB Table
+    DynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: gsi1pk
+            AttributeType: S
+          - AttributeName: gsi1sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: GSI1
+            KeySchema:
+              - AttributeName: gsi1pk
+                KeyType: HASH
+              - AttributeName: gsi1sk
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+        PointInTimeRecoverySpecification:
+          PointInTimeRecoveryEnabled: true
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+
+    # Cognito User Pool
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-user-pool-${self:provider.stage}
+        AutoVerifiedAttributes:
+          - email
+        UsernameAttributes:
+          - email
+        Schema:
+          - Name: email
+            Required: true
+            Mutable: false
+          - Name: name
+            Required: true
+            Mutable: true
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
+            RequireUppercase: true
+        AccountRecoverySetting:
+          RecoveryMechanisms:
+            - Name: verified_email
+              Priority: 1
+
+    # Cognito User Pool Client
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}-client-${self:provider.stage}
+        UserPoolId: !Ref CognitoUserPool
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_SRP_AUTH
+        PreventUserExistenceErrors: ENABLED
+
+    # API Gateway Authorizer
+    ApiGatewayAuthorizer:
+      Type: AWS::ApiGateway::Authorizer
+      Properties:
+        Name: CognitoAuthorizer
+        Type: COGNITO_USER_POOLS
+        IdentitySource: method.request.header.Authorization
+        RestApiId: !Ref ApiGatewayRestApi
+        ProviderARNs:
+          - !GetAtt CognitoUserPool.Arn
+
+  Outputs:
+    ApiEndpoint:
+      Description: API Gateway endpoint URL
+      Value: !Sub 'https://${ApiGatewayRestApi}.execute-api.${AWS::Region}.amazonaws.com/${self:provider.stage}'
+      Export:
+        Name: ${self:service}-${self:provider.stage}-api-endpoint
+
+    UserPoolId:
+      Description: Cognito User Pool ID
+      Value: !Ref CognitoUserPool
+      Export:
+        Name: ${self:service}-${self:provider.stage}-user-pool-id
+
+    UserPoolClientId:
+      Description: Cognito User Pool Client ID
+      Value: !Ref CognitoUserPoolClient
+      Export:
+        Name: ${self:service}-${self:provider.stage}-user-pool-client-id
+
+    DynamoDBTableName:
+      Description: DynamoDB Table Name
+      Value: !Ref DynamoDBTable
+      Export:
+        Name: ${self:service}-${self:provider.stage}-table-name

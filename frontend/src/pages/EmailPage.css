@@ -1,0 +1,54 @@
+.email-form {
+  max-width: 800px;
+}
+
+.email-input-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.email-input-group input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.email-input-group button {
+  padding: 0.75rem 1.5rem;
+}
+
+.email-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.email-tag {
+  background-color: #007bff;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.email-tag button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
+  width: auto;
+}
+
+.email-tag button:hover {
+  color: #ffdddd;
+}
+
+textarea {
+  resize: vertical;
+}

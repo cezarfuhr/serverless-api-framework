@@ -1,0 +1,41 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.user-form {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.users-table th,
+.users-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.users-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
