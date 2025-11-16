@@ -1,0 +1,430 @@
+openapi: 3.0.3
+info:
+  title: Serverless API Framework
+  description: Complete framework for building scalable serverless APIs with AWS Lambda and API Gateway
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.example.com/dev
+    description: Development server
+  - url: https://api.example.com/staging
+    description: Staging server
+  - url: https://api.example.com/prod
+    description: Production server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Users
+    description: User management operations
+  - name: Email
+    description: Email service operations
+
+components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: AWS Cognito JWT token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        name:
+          type: string
+          description: User full name
+        createdAt:
+          type: string
+          format: date-time
+          description: User creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+      required:
+        - id
+        - email
+        - name
+        - createdAt
+        - updatedAt
+
+    CreateUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 5
+          maxLength: 255
+          description: User email address
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: '^[a-zA-Z\s]+$'
+          description: User full name (letters and spaces only)
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: Password (must contain uppercase, lowercase, number, and special character)
+          format: password
+      required:
+        - email
+        - name
+        - password
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          pattern: '^[a-zA-Z\s]+$'
+          description: User full name (letters and spaces only)
+
+    SendEmailRequest:
+      type: object
+      properties:
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+          minItems: 1
+          maxItems: 50
+          description: List of recipient email addresses
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Email subject
+        body:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          description: Email body (plain text)
+        html:
+          type: string
+          maxLength: 50000
+          description: Email body (HTML)
+      required:
+        - to
+        - subject
+        - body
+
+    HealthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [healthy, degraded, unhealthy]
+            checks:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [up, down, degraded]
+                  latency:
+                    type: number
+                  message:
+                    type: string
+            metadata:
+              type: object
+              properties:
+                timestamp:
+                  type: string
+                  format: date-time
+                uptime:
+                  type: number
+                version:
+                  type: string
+                environment:
+                  type: string
+                service:
+                  type: string
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            details:
+              type: object
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check API health status
+      operationId: healthCheck
+      parameters:
+        - name: detailed
+          in: query
+          description: Return detailed health check
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: API is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create a new user account
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request - validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Users
+      summary: List users
+      description: Get list of all users
+      operationId: listUsers
+      security:
+        - CognitoAuth: []
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/User'
+                          count:
+                            type: number
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user
+      description: Get user details by ID
+      operationId: getUser
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user information
+      operationId: updateUser
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request - validation failed
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete user account
+      operationId: deleteUser
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID (UUID)
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: User deleted successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /email/send:
+    post:
+      tags:
+        - Email
+      summary: Send email
+      description: Send an email to one or more recipients
+      operationId: sendEmail
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendEmailRequest'
+      responses:
+        '200':
+          description: Email sent successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+                          recipients:
+                            type: number
+        '400':
+          description: Bad request - validation failed
+        '401':
+          description: Unauthorized

@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # LocalStack - AWS local simulation
+  localstack:
+    image: localstack/localstack:latest
+    container_name: serverless-localstack
+    ports:
+      - '4566:4566'
+      - '4571:4571'
+    environment:
+      - SERVICES=lambda,apigateway,dynamodb,cognito-idp,ses,s3
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - LAMBDA_EXECUTOR=docker-reuse
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './localstack-data:/tmp/localstack'
+    networks:
+      - serverless-network
+
+  # DynamoDB Admin UI
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    container_name: serverless-dynamodb-admin
+    ports:
+      - '8001:8001'
+    environment:
+      - DYNAMO_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    depends_on:
+      - localstack
+    networks:
+      - serverless-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: serverless-backend
+    ports:
+      - '3001:3001'
+    environment:
+      - NODE_ENV=development
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT=http://localstack:4566
+      - DYNAMODB_TABLE=serverless-api-framework-dev
+      - SES_FROM_EMAIL=noreply@example.com
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - localstack
+    networks:
+      - serverless-network
+    command: npm run dev
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: serverless-frontend
+    ports:
+      - '3000:3000'
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - serverless-network
+    command: npm run dev
+
+networks:
+  serverless-network:
+    driver: bridge
+
+volumes:
+  localstack-data:

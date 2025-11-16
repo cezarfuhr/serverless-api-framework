@@ -1,0 +1,36 @@
+{
+  "name": "serverless-api-backend",
+  "version": "1.0.0",
+  "description": "Backend serverless API",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f",
+    "invoke": "serverless invoke -f"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.511.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.511.0",
+    "@aws-sdk/client-ses": "^3.511.0",
+    "@aws-sdk/client-secrets-manager": "^3.511.0",
+    "@aws-sdk/lib-dynamodb": "^3.511.0",
+    "aws-xray-sdk-core": "^3.5.3",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.133",
+    "@types/uuid": "^9.0.7",
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.3",
+    "serverless-plugin-typescript": "^2.1.5",
+    "serverless-plugin-tracing": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
